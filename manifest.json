@@ -1,0 +1,18 @@
+{
+  "name": "Shut Up Brain",
+  "short_name": "Shut Up Brain",
+  "description": "Green noise for sleep. Built out of spite after other apps kept shutting down.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><circle cx='50' cy='50' r='25' fill='none' stroke='%236bcf7f' stroke-width='4'/><circle cx='50' cy='50' r='15' fill='none' stroke='%236bcf7f' stroke-width='3' opacity='0.6'/><circle cx='50' cy='50' r='5' fill='%236bcf7f'/></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

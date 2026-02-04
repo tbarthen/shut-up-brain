@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Green noise for sleep. Built out of spite after other apps kept shutting down.">
+  <title>Shut Up Brain</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+      color: #8888aa;
+    }
+
+    .noise-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      width: 100%;
+      max-width: 340px;
+      margin-bottom: 40px;
+    }
+
+    .noise-btn {
+      position: relative;
+      border: 2px solid #333355;
+      border-radius: 16px;
+      padding: 22px 10px;
+      background: #16213e;
+      color: #aaaacc;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      text-align: center;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .noise-btn .dot {
+      display: block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin: 0 auto 10px;
+      opacity: 0.6;
+      transition: opacity 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .noise-btn[data-noise="white"] .dot { background: #e0e0e0; }
+    .noise-btn[data-noise="pink"] .dot { background: #e891b2; }
+    .noise-btn[data-noise="brown"] .dot { background: #a67c52; }
+    .noise-btn[data-noise="green"] .dot { background: #6bcf7f; }
+
+    .noise-btn.active {
+      border-color: #5566aa;
+      background: #1e2d5a;
+      color: #ffffff;
+    }
+
+    .noise-btn.active .dot {
+      opacity: 1;
+      box-shadow: 0 0 12px currentColor;
+    }
+
+    .noise-btn[data-noise="white"].active { border-color: #aaaaaa; }
+    .noise-btn[data-noise="white"].active .dot { box-shadow: 0 0 12px #e0e0e0; }
+    .noise-btn[data-noise="pink"].active { border-color: #e891b2; }
+    .noise-btn[data-noise="pink"].active .dot { box-shadow: 0 0 12px #e891b2; }
+    .noise-btn[data-noise="brown"].active { border-color: #a67c52; }
+    .noise-btn[data-noise="brown"].active .dot { box-shadow: 0 0 12px #a67c52; }
+    .noise-btn[data-noise="green"].active { border-color: #6bcf7f; }
+    .noise-btn[data-noise="green"].active .dot { box-shadow: 0 0 12px #6bcf7f; }
+
+    .noise-btn:active {
+      transform: scale(0.96);
+    }
+
+    .controls {
+      width: 100%;
+      max-width: 340px;
+    }
+
+    .volume-section {
+      margin-bottom: 30px;
+    }
+
+    .volume-label {
+      font-size: 0.8rem;
+      color: #666688;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    .volume-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #333355;
+      outline: none;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #5566aa;
+      cursor: pointer;
+      border: none;
+    }
+
+    .volume-slider::-moz-range-thumb {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #5566aa;
+      cursor: pointer;
+      border: none;
+    }
+
+    .play-btn {
+      width: 100%;
+      padding: 18px;
+      border: 2px solid #5566aa;
+      border-radius: 16px;
+      background: transparent;
+      color: #8899cc;
+      font-size: 1.1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      letter-spacing: 0.05em;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .play-btn.playing {
+      background: #5566aa;
+      color: #ffffff;
+    }
+
+    .play-btn:active {
+      transform: scale(0.97);
+    }
+
+    .timer-section {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .timer-label {
+      font-size: 0.8rem;
+      color: #666688;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    .timer-options {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .timer-btn {
+      border: 1px solid #333355;
+      border-radius: 10px;
+      padding: 8px 14px;
+      background: #16213e;
+      color: #8888aa;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .timer-btn.active {
+      border-color: #5566aa;
+      background: #1e2d5a;
+      color: #aabbee;
+    }
+
+    .timer-display {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: #6666aa;
+      min-height: 1.2em;
+    }
+
+    .status {
+      margin-top: 30px;
+      font-size: 0.75rem;
+      color: #444466;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Shut Up Brain</h1>
+
+  <div class="noise-buttons">
+    <button class="noise-btn" data-noise="white">
+      <span class="dot"></span>
+      White
+    </button>
+    <button class="noise-btn" data-noise="pink">
+      <span class="dot"></span>
+      Pink
+    </button>
+    <button class="noise-btn" data-noise="brown">
+      <span class="dot"></span>
+      Brown
+    </button>
+    <button class="noise-btn active" data-noise="green">
+      <span class="dot"></span>
+      Green
+    </button>
+  </div>
+
+  <div class="controls">
+    <div class="volume-section">
+      <div class="volume-label">Volume</div>
+      <input type="range" class="volume-slider" min="0" max="100" value="60">
+    </div>
+
+    <button class="play-btn" id="playBtn">Play</button>
+
+    <div class="timer-section">
+      <div class="timer-label">Sleep Timer</div>
+      <div class="timer-options">
+        <button class="timer-btn" data-minutes="0">Off</button>
+        <button class="timer-btn" data-minutes="15">15m</button>
+        <button class="timer-btn" data-minutes="30">30m</button>
+        <button class="timer-btn" data-minutes="60">1h</button>
+        <button class="timer-btn" data-minutes="120">2h</button>
+        <button class="timer-btn" data-minutes="480">8h</button>
+      </div>
+      <div class="timer-display" id="timerDisplay"></div>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <script>
+    // ---- Audio Engine ----
+    let audioCtx = null;
+    let noiseSource = null;
+    let gainNode = null;
+    let filterNode = null;
+    let isPlaying = false;
+    let selectedNoise = "green";
+    let wakeLock = null;
+    let timerMinutes = 0;
+    let timerInterval = null;
+    let timerEnd = null;
+
+    const playBtn = document.getElementById("playBtn");
+    const volumeSlider = document.querySelector(".volume-slider");
+    const timerDisplay = document.getElementById("timerDisplay");
+    const statusEl = document.getElementById("status");
+    const noiseButtons = document.querySelectorAll(".noise-btn");
+    const timerButtons = document.querySelectorAll(".timer-btn");
+
+    // Generate a buffer of white noise
+    function createWhiteNoiseBuffer(ctx, durationSec) {
+      const sampleRate = ctx.sampleRate;
+      const length = sampleRate * durationSec;
+      const buffer = ctx.createBuffer(1, length, sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < length; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      return buffer;
+    }
+
+    // Pink noise uses the Voss-McCartney algorithm
+    function createPinkNoiseBuffer(ctx, durationSec) {
+      const sampleRate = ctx.sampleRate;
+      const length = sampleRate * durationSec;
+      const buffer = ctx.createBuffer(1, length, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < length; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+        b6 = white * 0.115926;
+        data[i] = pink * 0.11;
+      }
+      return buffer;
+    }
+
+    // Brown noise is integrated white noise
+    function createBrownNoiseBuffer(ctx, durationSec) {
+      const sampleRate = ctx.sampleRate;
+      const length = sampleRate * durationSec;
+      const buffer = ctx.createBuffer(1, length, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      let lastOut = 0;
+      for (let i = 0; i < length; i++) {
+        const white = Math.random() * 2 - 1;
+        lastOut = (lastOut + (0.02 * white)) / 1.02;
+        data[i] = lastOut * 3.5;
+      }
+      return buffer;
+    }
+
+    function createNoiseBuffer(ctx, type) {
+      // 10 second buffer, looped
+      const dur = 10;
+      switch (type) {
+        case "white": return createWhiteNoiseBuffer(ctx, dur);
+        case "pink": return createPinkNoiseBuffer(ctx, dur);
+        case "brown": return createBrownNoiseBuffer(ctx, dur);
+        case "green": return createWhiteNoiseBuffer(ctx, dur); // filtered later
+        default: return createWhiteNoiseBuffer(ctx, dur);
+      }
+    }
+
+    function startNoise() {
+      if (isPlaying) stopNoise();
+
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+
+      const buffer = createNoiseBuffer(audioCtx, selectedNoise);
+
+      noiseSource = audioCtx.createBufferSource();
+      noiseSource.buffer = buffer;
+      noiseSource.loop = true;
+
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = volumeSlider.value / 100;
+
+      if (selectedNoise === "green") {
+        // Green noise: bandpass filter centered around 500Hz
+        filterNode = audioCtx.createBiquadFilter();
+        filterNode.type = "bandpass";
+        filterNode.frequency.value = 500;
+        filterNode.Q.value = 0.5; // wide bandwidth for natural sound
+
+        noiseSource.connect(filterNode);
+        filterNode.connect(gainNode);
+      } else {
+        filterNode = null;
+        noiseSource.connect(gainNode);
+      }
+
+      gainNode.connect(audioCtx.destination);
+      noiseSource.start(0);
+
+      isPlaying = true;
+      playBtn.textContent = "Stop";
+      playBtn.classList.add("playing");
+
+      requestWakeLock();
+    }
+
+    function stopNoise() {
+      if (noiseSource) {
+        try { noiseSource.stop(); } catch (e) { /* ignore */ }
+        noiseSource.disconnect();
+        noiseSource = null;
+      }
+      if (filterNode) {
+        filterNode.disconnect();
+        filterNode = null;
+      }
+      if (gainNode) {
+        gainNode.disconnect();
+        gainNode = null;
+      }
+
+      isPlaying = false;
+      playBtn.textContent = "Play";
+      playBtn.classList.remove("playing");
+
+      releaseWakeLock();
+      clearTimer();
+    }
+
+    // ---- UI Handlers ----
+
+    playBtn.addEventListener("click", function () {
+      if (isPlaying) {
+        stopNoise();
+      } else {
+        startNoise();
+        if (timerMinutes > 0) {
+          startTimer(timerMinutes);
+        }
+      }
+    });
+
+    noiseButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        noiseButtons.forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        selectedNoise = btn.dataset.noise;
+
+        if (isPlaying) {
+          startNoise(); // restart with new noise type
+          if (timerMinutes > 0 && timerEnd) {
+            // Keep existing timer running
+            const remaining = Math.max(0, timerEnd - Date.now());
+            if (remaining > 0) {
+              startTimerFromMs(remaining);
+            }
+          }
+        }
+      });
+    });
+
+    volumeSlider.addEventListener("input", function () {
+      if (gainNode) {
+        gainNode.gain.value = volumeSlider.value / 100;
+      }
+    });
+
+    // ---- Sleep Timer ----
+
+    timerButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        timerButtons.forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        timerMinutes = parseInt(btn.dataset.minutes, 10);
+
+        if (timerMinutes === 0) {
+          clearTimer();
+          timerDisplay.textContent = "";
+        } else if (isPlaying) {
+          startTimer(timerMinutes);
+        }
+      });
+    });
+
+    function startTimer(minutes) {
+      clearTimer();
+      timerEnd = Date.now() + minutes * 60 * 1000;
+      updateTimerDisplay();
+      timerInterval = setInterval(updateTimerDisplay, 1000);
+    }
+
+    function startTimerFromMs(ms) {
+      clearTimer();
+      timerEnd = Date.now() + ms;
+      updateTimerDisplay();
+      timerInterval = setInterval(updateTimerDisplay, 1000);
+    }
+
+    function clearTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function updateTimerDisplay() {
+      if (!timerEnd) {
+        timerDisplay.textContent = "";
+        return;
+      }
+
+      const remaining = Math.max(0, timerEnd - Date.now());
+
+      if (remaining <= 0) {
+        clearTimer();
+        timerEnd = null;
+        timerDisplay.textContent = "";
+        // Fade out over 5 seconds
+        if (isPlaying && gainNode) {
+          gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
+          setTimeout(function () { stopNoise(); }, 5000);
+        }
+        return;
+      }
+
+      const hrs = Math.floor(remaining / 3600000);
+      const mins = Math.floor((remaining % 3600000) / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+
+      if (hrs > 0) {
+        timerDisplay.textContent = hrs + "h " + mins + "m " + secs + "s remaining";
+      } else {
+        timerDisplay.textContent = mins + "m " + secs + "s remaining";
+      }
+    }
+
+    // ---- Wake Lock (keep screen/audio alive) ----
+
+    async function requestWakeLock() {
+      if ("wakeLock" in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request("screen");
+          wakeLock.addEventListener("release", function () {
+            // Re-acquire if still playing (e.g., after tab switch)
+            if (isPlaying) {
+              requestWakeLock();
+            }
+          });
+        } catch (e) {
+          // Wake lock not available or denied, that's fine
+        }
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLock) {
+        try { wakeLock.release(); } catch (e) { /* ignore */ }
+        wakeLock = null;
+      }
+    }
+
+    // Re-acquire wake lock when page becomes visible again
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible" && isPlaying) {
+        requestWakeLock();
+
+        // Resume audio context if it was suspended
+        if (audioCtx && audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+      }
+    });
+
+    // ---- Service Worker Registration ----
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").then(function () {
+        statusEl.textContent = "Available offline";
+      }).catch(function () {
+        statusEl.textContent = "";
+      });
+    }
+  </script>
+</body>
+</html>
