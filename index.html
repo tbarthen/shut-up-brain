@@ -294,11 +294,11 @@
     <div class="tone-section">
       <div class="tone-label">Tone</div>
       <div class="tone-options">
+        <button class="tone-btn" data-tone="clear">Clear</button>
         <button class="tone-btn active" data-tone="baseline">Baseline</button>
         <button class="tone-btn" data-tone="drift">Drift</button>
         <button class="tone-btn" data-tone="deep">Deep</button>
         <button class="tone-btn" data-tone="abyss">Abyss</button>
-        <button class="tone-btn" data-tone="clear">Clear</button>
       </div>
     </div>
 
@@ -349,9 +349,9 @@
 
     const toneFilters = {
       baseline: {
-        white: null,
-        pink: null,
-        brown: null,
+        white: { type: "lowpass", frequency: 8000, Q: 0.3 },
+        pink: { type: "lowpass", frequency: 6000, Q: 0.3 },
+        brown: { type: "lowpass", frequency: 4000, Q: 0.3 },
         green: { type: "bandpass", frequency: 500, Q: 0.5 }
       },
       drift: {
