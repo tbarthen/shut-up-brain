@@ -214,6 +214,45 @@
       color: #aabbee;
     }
 
+    .tone-section {
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .tone-label {
+      font-size: 0.8rem;
+      color: #666688;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    .tone-options {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .tone-btn {
+      border: 1px solid #333355;
+      border-radius: 10px;
+      padding: 8px 14px;
+      background: #16213e;
+      color: #8888aa;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .tone-btn.active {
+      border-color: #5566aa;
+      background: #1e2d5a;
+      color: #aabbee;
+    }
+
     .timer-display {
       margin-top: 12px;
       font-size: 0.85rem;
@@ -252,6 +291,17 @@
   </div>
 
   <div class="controls">
+    <div class="tone-section">
+      <div class="tone-label">Tone</div>
+      <div class="tone-options">
+        <button class="tone-btn active" data-tone="baseline">Baseline</button>
+        <button class="tone-btn" data-tone="drift">Drift</button>
+        <button class="tone-btn" data-tone="deep">Deep</button>
+        <button class="tone-btn" data-tone="abyss">Abyss</button>
+        <button class="tone-btn" data-tone="clear">Clear</button>
+      </div>
+    </div>
+
     <div class="volume-section">
       <div class="volume-label">Volume</div>
       <input type="range" class="volume-slider" min="0" max="100" value="60">
@@ -283,6 +333,7 @@
     let filterNode = null;
     let isPlaying = false;
     let selectedNoise = "green";
+    let selectedTone = "baseline";
     let wakeLock = null;
     let timerMinutes = 0;
     let timerInterval = null;
@@ -293,7 +344,41 @@
     const timerDisplay = document.getElementById("timerDisplay");
     const statusEl = document.getElementById("status");
     const noiseButtons = document.querySelectorAll(".noise-btn");
+    const toneButtons = document.querySelectorAll(".tone-btn");
     const timerButtons = document.querySelectorAll(".timer-btn");
+
+    const toneFilters = {
+      baseline: {
+        white: null,
+        pink: null,
+        brown: null,
+        green: { type: "bandpass", frequency: 500, Q: 0.5 }
+      },
+      drift: {
+        white: { type: "lowpass", frequency: 1200, Q: 0.5 },
+        pink: { type: "lowpass", frequency: 800, Q: 0.5 },
+        brown: { type: "lowpass", frequency: 600, Q: 0.5 },
+        green: { type: "bandpass", frequency: 400, Q: 0.3 }
+      },
+      deep: {
+        white: { type: "lowpass", frequency: 400, Q: 0.7 },
+        pink: { type: "lowpass", frequency: 300, Q: 0.7 },
+        brown: { type: "lowpass", frequency: 200, Q: 0.7 },
+        green: { type: "bandpass", frequency: 250, Q: 0.5 }
+      },
+      abyss: {
+        white: { type: "lowpass", frequency: 150, Q: 0.8 },
+        pink: { type: "lowpass", frequency: 120, Q: 0.8 },
+        brown: { type: "lowpass", frequency: 100, Q: 0.8 },
+        green: { type: "bandpass", frequency: 120, Q: 0.7 }
+      },
+      clear: {
+        white: { type: "highpass", frequency: 300, Q: 0.5 },
+        pink: { type: "highpass", frequency: 200, Q: 0.5 },
+        brown: { type: "highpass", frequency: 150, Q: 0.5 },
+        green: { type: "bandpass", frequency: 700, Q: 0.3 }
+      }
+    };
 
     // Generate a buffer of white noise
     function createWhiteNoiseBuffer(ctx, durationSec) {
@@ -378,12 +463,12 @@
       gainNode = audioCtx.createGain();
       gainNode.gain.value = volumeSlider.value / 100;
 
-      if (selectedNoise === "green") {
-        // Green noise: bandpass filter centered around 500Hz
+      var filterConfig = toneFilters[selectedTone][selectedNoise];
+      if (filterConfig) {
         filterNode = audioCtx.createBiquadFilter();
-        filterNode.type = "bandpass";
-        filterNode.frequency.value = 500;
-        filterNode.Q.value = 0.5; // wide bandwidth for natural sound
+        filterNode.type = filterConfig.type;
+        filterNode.frequency.value = filterConfig.frequency;
+        filterNode.Q.value = filterConfig.Q;
 
         noiseSource.connect(filterNode);
         filterNode.connect(gainNode);
@@ -449,6 +534,24 @@
           if (timerMinutes > 0 && timerEnd) {
             // Keep existing timer running
             const remaining = Math.max(0, timerEnd - Date.now());
+            if (remaining > 0) {
+              startTimerFromMs(remaining);
+            }
+          }
+        }
+      });
+    });
+
+    toneButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        toneButtons.forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        selectedTone = btn.dataset.tone;
+
+        if (isPlaying) {
+          startNoise();
+          if (timerMinutes > 0 && timerEnd) {
+            var remaining = Math.max(0, timerEnd - Date.now());
             if (remaining > 0) {
               startTimerFromMs(remaining);
             }
