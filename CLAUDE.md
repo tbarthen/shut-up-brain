@@ -94,13 +94,20 @@ version string is what triggers `install`/`activate` and evicts the old cache.
   wider wraps Abyss onto a second line. The name of the selected tone moves into
   the section label (`TONE — DRIFT`) since the pill no longer shows it.
 
-- **The selected tone's colour lives on the border, not the icon.** Tone pills
-  mirror the noise buttons' active treatment (bright accent + glow), but since
-  the active pill hides its label and shows an icon instead, the noise row's
-  "text goes white" becomes "icon goes white". The accent ramps aqua → indigo
-  across the five tones while the icon stays `#ffffff`, so the glyph never dims
-  as the accent deepens. The glow strengthens toward Abyss for the same reason:
-  a darker accent alone would read as fading out rather than sinking.
+- **Depth of the selected tone is carried by the fill, not the border.** Tone
+  pills mirror the noise buttons' active treatment (bright accent + glow), but
+  since the active pill hides its label and shows an icon, the noise row's
+  "text goes white" becomes "icon goes white" — the icon is `#ffffff` so it
+  never dims as the colour deepens.
+
+  Ramping the *border* darker was tried first and does not work. There is very
+  little room between a deep blue and the `#1a1a2e` background, so the steps
+  compress badly (luminance gaps of 28.8 / 16.7 / 7.6 / 3.0) and Abyss lands at
+  1.17:1 against the background — the selected state becoming the least visible
+  thing on screen. The fill has room to ramp because it is bounded by a border
+  that stays bright, and white-on-fill contrast *improves* as it darkens
+  (10.7:1 at Clear up to 16.2:1 at Abyss). Keep the border bright; deepen the
+  fill.
 
 - **Icons set `stroke` explicitly, not `currentColor`.** Inside a `<button>`,
   `currentColor` resolves against the button's own colour rather than an inherited
