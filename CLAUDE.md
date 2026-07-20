@@ -77,19 +77,28 @@ Measured by FFT on the generated buffers, power averaged into octave bands:
 | White  | +0.03 dB/oct | 0  | Exact |
 | Pink   | −3.03 dB/oct | −3 | Exact (Kellett IIR filter bank) |
 | Brown  | −5.34 dB/oct | −6 | −6 above ~150Hz; flattens below |
-| Green  | +0.05 dB/oct | —  | **Identical to white — see below** |
+| Green  | pink + ~5dB mid lift | — | Correct (see below) |
 
 Brown's low-end flattening is correct, not a defect: `lastOut = (lastOut +
 0.02*white) / 1.02` is a leaky integrator, i.e. a one-pole lowpass with a corner
 near 150Hz. A true integrator is an unbounded random walk that drifts and clips.
 
-**Green is not currently a generated colour.** `createNoiseBuffer` returns white
-noise for it, and all of its character comes from the bandpass in `toneFilters`.
-The commonly used definition is pink noise with extra energy around 500Hz —
-broadband with a mid emphasis. A bandpass is the opposite operation: it removes
-everything outside the band, leaving green ~12dB down at 62.5Hz where the
-accepted shape is ~3dB *up*. That ~15dB low-end deficit is why it sounds thin
-next to green noise elsewhere.
+**Green is pink noise with a peaking boost at 500Hz**, baked into the buffer by
+`createGreenNoiseBuffer`, so it is a generated colour like the other three.
+Measured octave bands (relative to 500Hz): +3.3, +0.7, −0.3, 0, −6.2, −11.0,
+−14.4, −17.6.
+
+It was previously white noise through a **bandpass**, which is the opposite
+operation — subtractive band-limiting rather than an additive lift on a
+broadband base. That left it ~12dB *down* at 62.5Hz where the accepted shape is
+~3dB *up*, a 15dB low-end deficit that made it sound thin and hissy compared to
+green noise elsewhere. Do not reintroduce a bandpass for green: the low end is
+the point.
+
+`createGreenNoiseBuffer` renormalises RMS back to pink's level after the boost,
+so switching colours does not jump in volume (measured delta: −0.06dB). Green's
+`toneFilters` entries are lowpasses like every other colour; the tone filter must
+not double as the colour definition.
 
 Note also that the tone filter always applies — there is no unfiltered path — so
 what is heard is generator × filter. Brown is the least altered, because its

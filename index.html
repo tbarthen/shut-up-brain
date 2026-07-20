@@ -457,31 +457,31 @@
         white: { type: "lowpass", frequency: 8000, Q: 0.3 },
         pink: { type: "lowpass", frequency: 6000, Q: 0.3 },
         brown: { type: "lowpass", frequency: 4000, Q: 0.3 },
-        green: { type: "bandpass", frequency: 500, Q: 0.5 }
+        green: { type: "lowpass", frequency: 5000, Q: 0.3 }
       },
       drift: {
         white: { type: "lowpass", frequency: 1200, Q: 0.5 },
         pink: { type: "lowpass", frequency: 800, Q: 0.5 },
         brown: { type: "lowpass", frequency: 600, Q: 0.5 },
-        green: { type: "bandpass", frequency: 400, Q: 0.3 }
+        green: { type: "lowpass", frequency: 700, Q: 0.5 }
       },
       deep: {
         white: { type: "lowpass", frequency: 400, Q: 0.7 },
         pink: { type: "lowpass", frequency: 300, Q: 0.7 },
         brown: { type: "lowpass", frequency: 200, Q: 0.7 },
-        green: { type: "bandpass", frequency: 250, Q: 0.5 }
+        green: { type: "lowpass", frequency: 260, Q: 0.7 }
       },
       abyss: {
         white: { type: "lowpass", frequency: 150, Q: 0.8 },
         pink: { type: "lowpass", frequency: 120, Q: 0.8 },
         brown: { type: "lowpass", frequency: 100, Q: 0.8 },
-        green: { type: "bandpass", frequency: 120, Q: 0.7 }
+        green: { type: "lowpass", frequency: 110, Q: 0.8 }
       },
       clear: {
         white: { type: "highpass", frequency: 300, Q: 0.5 },
         pink: { type: "highpass", frequency: 200, Q: 0.5 },
         brown: { type: "highpass", frequency: 150, Q: 0.5 },
-        green: { type: "bandpass", frequency: 700, Q: 0.3 }
+        green: { type: "highpass", frequency: 220, Q: 0.5 }
       }
     };
 
@@ -538,6 +538,51 @@
       return buffer;
     }
 
+    // RBJ peaking EQ, applied in place. Used to lift green's midrange without
+    // discarding the rest of the spectrum the way a bandpass would.
+    function applyPeakingBoost(data, sampleRate, freq, Q, gainDb) {
+      const A = Math.pow(10, gainDb / 40);
+      const w0 = 2 * Math.PI * freq / sampleRate;
+      const cosw0 = Math.cos(w0);
+      const alpha = Math.sin(w0) / (2 * Q);
+
+      const b0 = 1 + alpha * A, b1 = -2 * cosw0, b2 = 1 - alpha * A;
+      const a0 = 1 + alpha / A, a1 = -2 * cosw0, a2 = 1 - alpha / A;
+
+      let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+      for (let i = 0; i < data.length; i++) {
+        const x0 = data[i];
+        const y0 = (b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0;
+        x2 = x1; x1 = x0; y2 = y1; y1 = y0;
+        data[i] = y0;
+      }
+    }
+
+    function rms(data) {
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+      return Math.sqrt(sum / data.length);
+    }
+
+    // Green noise is pink with extra energy around 500Hz — "the background noise
+    // of the world". Broadband with a mid lift, NOT a band-limited slice: a
+    // bandpass would strip the low end that gives it its body.
+    function createGreenNoiseBuffer(ctx, durationSec) {
+      const buffer = createPinkNoiseBuffer(ctx, durationSec);
+      const data = buffer.getChannelData(0);
+
+      // Restore the pre-boost level afterwards so green sits at the same
+      // loudness as pink rather than jumping when the colour is switched.
+      const before = rms(data);
+      applyPeakingBoost(data, ctx.sampleRate, 500, 0.9, 6);
+      const after = rms(data);
+      if (after > 0) {
+        const scale = before / after;
+        for (let i = 0; i < data.length; i++) data[i] *= scale;
+      }
+      return buffer;
+    }
+
     function createNoiseBuffer(ctx, type) {
       // 10 second buffer, looped
       const dur = 10;
@@ -545,7 +590,7 @@
         case "white": return createWhiteNoiseBuffer(ctx, dur);
         case "pink": return createPinkNoiseBuffer(ctx, dur);
         case "brown": return createBrownNoiseBuffer(ctx, dur);
-        case "green": return createWhiteNoiseBuffer(ctx, dur); // filtered later
+        case "green": return createGreenNoiseBuffer(ctx, dur);
         default: return createWhiteNoiseBuffer(ctx, dur);
       }
     }
