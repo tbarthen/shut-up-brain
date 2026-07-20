@@ -94,6 +94,14 @@ version string is what triggers `install`/`activate` and evicts the old cache.
   wider wraps Abyss onto a second line. The name of the selected tone moves into
   the section label (`TONE — DRIFT`) since the pill no longer shows it.
 
+- **The selected tone's colour lives on the border, not the icon.** Tone pills
+  mirror the noise buttons' active treatment (bright accent + glow), but since
+  the active pill hides its label and shows an icon instead, the noise row's
+  "text goes white" becomes "icon goes white". The accent ramps aqua → indigo
+  across the five tones while the icon stays `#ffffff`, so the glyph never dims
+  as the accent deepens. The glow strengthens toward Abyss for the same reason:
+  a darker accent alone would read as fading out rather than sinking.
+
 - **Icons set `stroke` explicitly, not `currentColor`.** Inside a `<button>`,
   `currentColor` resolves against the button's own colour rather than an inherited
   one, and gets a UA default if that rule is ever moved or removed — which renders
