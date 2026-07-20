@@ -86,3 +86,15 @@ version string is what triggers `install`/`activate` and evicts the old cache.
 
 - **Timer expiry fades out rather than cutting off** — `setTargetAtTime` over ~5s,
   then `stopNoise()`. Abrupt silence wakes people up.
+
+- **Tone pills are a fixed 60×34px.** The active pill swaps its name for an icon,
+  so the box must not be allowed to resize or the whole row reflows on every tone
+  change. 60px is the ceiling: `.controls` is capped at 340px, which leaves 335px
+  on a 375px phone, and five pills plus four 8px gaps must fit inside it. Anything
+  wider wraps Abyss onto a second line. The name of the selected tone moves into
+  the section label (`TONE — DRIFT`) since the pill no longer shows it.
+
+- **Icons set `stroke` explicitly, not `currentColor`.** Inside a `<button>`,
+  `currentColor` resolves against the button's own colour rather than an inherited
+  one, and gets a UA default if that rule is ever moved or removed — which renders
+  the icons black on a near-black background. Silent and invisible when it fails.
