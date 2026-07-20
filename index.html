@@ -373,6 +373,63 @@
       return active ? active.dataset[datasetKey] : null;
     }
 
+    // ---- Persistence ----
+    // Saved settings are written back into the markup before startup reads it,
+    // so readSelection() above needs no knowledge of storage.
+    //
+    // The sleep timer is deliberately NOT saved. Picking 15m for an afternoon
+    // nap and having that silently carry over to bedtime would cut the night
+    // four hours short — the one failure the timer exists to prevent.
+    const STORAGE_KEY = "shut-up-brain";
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (e) {
+        // Storage disabled, blocked, or holding corrupt JSON. Fall back to defaults.
+        return {};
+      }
+    }
+
+    function saveSettings() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          noise: selectedNoise,
+          tone: selectedTone,
+          volume: volumeSlider.value
+        }));
+      } catch (e) {
+        // Storage unavailable or full. Settings simply will not persist.
+      }
+    }
+
+    // Moves the `active` class to the saved button. The value is matched against
+    // the buttons actually present rather than a hardcoded list, so renaming or
+    // removing a tone discards stale storage instead of restoring a selection
+    // that no longer resolves in toneFilters.
+    function applySelection(groupSelector, datasetKey, value) {
+      if (typeof value !== "string") return;
+      const buttons = document.querySelectorAll(groupSelector);
+      let target = null;
+      buttons.forEach(function (b) { if (b.dataset[datasetKey] === value) target = b; });
+      if (!target) return;
+      buttons.forEach(function (b) { b.classList.remove("active"); });
+      target.classList.add("active");
+    }
+
+    (function restoreSettings() {
+      const saved = loadSettings();
+      applySelection(".noise-btn", "noise", saved.noise);
+      applySelection(".tone-btn", "tone", saved.tone);
+
+      const volume = parseInt(saved.volume, 10);
+      if (isFinite(volume) && volume >= 0 && volume <= 100) {
+        document.querySelector(".volume-slider").value = volume;
+      }
+    })();
+
     // ---- Audio Engine ----
     let audioCtx = null;
     let noiseSource = null;
@@ -577,6 +634,7 @@
         noiseButtons.forEach(function (b) { b.classList.remove("active"); });
         btn.classList.add("active");
         selectedNoise = btn.dataset.noise;
+        saveSettings();
 
         if (isPlaying) {
           startNoise(); // restart with new noise type
@@ -605,6 +663,7 @@
         btn.classList.add("active");
         selectedTone = btn.dataset.tone;
         updateToneName();
+        saveSettings();
 
         if (isPlaying) {
           startNoise();
@@ -623,6 +682,10 @@
         gainNode.gain.value = volumeSlider.value / 100;
       }
     });
+
+    // Saved on "change" rather than "input": input fires continuously while
+    // dragging, which would write to storage on every pixel of travel.
+    volumeSlider.addEventListener("change", saveSettings);
 
     // ---- Sleep Timer ----
 

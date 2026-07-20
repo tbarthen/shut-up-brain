@@ -87,6 +87,28 @@ version string is what triggers `install`/`activate` and evicts the old cache.
 - **Timer expiry fades out rather than cutting off** — `setTargetAtTime` over ~5s,
   then `stopNoise()`. Abrupt silence wakes people up.
 
+- **Saved settings are restored into the markup, not into the JS state.**
+  `restoreSettings()` moves the `active` class and sets the slider value before
+  the `readSelection()` calls run, so the rest of the app is unaware persistence
+  exists and the markup stays the single source of truth.
+
+  Three constraints, each load-bearing:
+  - **Every `localStorage` call is wrapped.** It throws — not returns null — when
+    storage is disabled or full. An unguarded read breaks the app for those users
+    entirely.
+  - **Restored values are matched against the buttons actually in the DOM**, not
+    a hardcoded list. Renaming or removing a tone therefore discards stale
+    storage automatically. This matters because `startNoise()` does
+    `toneFilters[selectedTone][selectedNoise]` — an unrecognised tone makes the
+    first index `undefined` and the second throw, killing playback on every load
+    until storage is cleared by hand.
+  - **The sleep timer is not saved.** Picking 15m for an afternoon nap and having
+    it carry silently into the night is the exact failure the timer exists to
+    prevent. It always returns to the 8h markup default.
+
+  Volume saves on `change`, not `input` — `input` fires continuously while
+  dragging and would write on every pixel of travel.
+
 - **Tone pills are a fixed 60×34px.** The active pill swaps its name for an icon,
   so the box must not be allowed to resize or the whole row reflows on every tone
   change. 60px is the ceiling: `.controls` is capped at 340px, which leaves 335px
