@@ -1,4 +1,4 @@
-var CACHE_NAME = "shut-up-brain-v3";
+var CACHE_NAME = "shut-up-brain-v4";
 var urlsToCache = [
   "./",
   "./index.html",
