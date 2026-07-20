@@ -280,11 +280,11 @@
       <span class="dot"></span>
       Pink
     </button>
-    <button class="noise-btn" data-noise="brown">
+    <button class="noise-btn active" data-noise="brown">
       <span class="dot"></span>
       Brown
     </button>
-    <button class="noise-btn active" data-noise="green">
+    <button class="noise-btn" data-noise="green">
       <span class="dot"></span>
       Green
     </button>
@@ -295,8 +295,8 @@
       <div class="tone-label">Tone</div>
       <div class="tone-options">
         <button class="tone-btn" data-tone="clear">Clear</button>
-        <button class="tone-btn active" data-tone="baseline">Baseline</button>
-        <button class="tone-btn" data-tone="drift">Drift</button>
+        <button class="tone-btn" data-tone="baseline">Baseline</button>
+        <button class="tone-btn active" data-tone="drift">Drift</button>
         <button class="tone-btn" data-tone="deep">Deep</button>
         <button class="tone-btn" data-tone="abyss">Abyss</button>
       </div>
@@ -317,7 +317,7 @@
         <button class="timer-btn" data-minutes="30">30m</button>
         <button class="timer-btn" data-minutes="60">1h</button>
         <button class="timer-btn" data-minutes="120">2h</button>
-        <button class="timer-btn" data-minutes="480">8h</button>
+        <button class="timer-btn active" data-minutes="480">8h</button>
       </div>
       <div class="timer-display" id="timerDisplay"></div>
     </div>
@@ -326,16 +326,25 @@
   <div class="status" id="status"></div>
 
   <script>
+    // ---- Defaults ----
+    // Startup selections are read from the markup (the `active` class) rather than
+    // repeated here, so the highlighted button and the audio engine cannot disagree.
+    function readSelection(groupSelector, datasetKey) {
+      const active = document.querySelector(groupSelector + ".active")
+        || document.querySelector(groupSelector);
+      return active ? active.dataset[datasetKey] : null;
+    }
+
     // ---- Audio Engine ----
     let audioCtx = null;
     let noiseSource = null;
     let gainNode = null;
     let filterNode = null;
     let isPlaying = false;
-    let selectedNoise = "green";
-    let selectedTone = "baseline";
+    let selectedNoise = readSelection(".noise-btn", "noise");
+    let selectedTone = readSelection(".tone-btn", "tone");
     let wakeLock = null;
-    let timerMinutes = 0;
+    let timerMinutes = parseInt(readSelection(".timer-btn", "minutes"), 10) || 0;
     let timerInterval = null;
     let timerEnd = null;
 
@@ -515,6 +524,7 @@
     playBtn.addEventListener("click", function () {
       if (isPlaying) {
         stopNoise();
+        resetTimer();
       } else {
         startNoise();
         if (timerMinutes > 0) {
@@ -575,8 +585,7 @@
         timerMinutes = parseInt(btn.dataset.minutes, 10);
 
         if (timerMinutes === 0) {
-          clearTimer();
-          timerDisplay.textContent = "";
+          resetTimer();
         } else if (isPlaying) {
           startTimer(timerMinutes);
         }
@@ -602,6 +611,15 @@
         clearInterval(timerInterval);
         timerInterval = null;
       }
+    }
+
+    // Abandons the countdown entirely. Deliberately separate from clearTimer():
+    // restarting playback after a noise/tone change tears down the interval but
+    // must preserve timerEnd so the remaining time can be resumed.
+    function resetTimer() {
+      clearTimer();
+      timerEnd = null;
+      timerDisplay.textContent = "";
     }
 
     function updateTimerDisplay() {
