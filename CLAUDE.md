@@ -106,8 +106,15 @@ version string is what triggers `install`/`activate` and evicts the old cache.
   1.17:1 against the background — the selected state becoming the least visible
   thing on screen. The fill has room to ramp because it is bounded by a border
   that stays bright, and white-on-fill contrast *improves* as it darkens
-  (10.7:1 at Clear up to 16.2:1 at Abyss). Keep the border bright; deepen the
+  (5.7:1 at Clear up to 16.2:1 at Abyss). Keep the border bright; deepen the
   fill.
+
+  **Space the ramp by CIE L\*, not by luminance.** Luminance is linear light, so
+  evenly spaced luminance values look increasingly cramped toward the dark end —
+  which is what collapsed the earlier attempts at Deep and Abyss. The fills sit
+  at L\* 43.5 / 35.6 / 28.0 / 20.2 / 12.5, giving steps of 7.9, 7.6, 7.8, 7.7 —
+  a spread of 0.3. If a fill is ever retuned, convert to L\* first
+  (`L* = 116·Y^⅓ − 16`) and keep the steps even there.
 
 - **Icons set `stroke` explicitly, not `currentColor`.** Inside a `<button>`,
   `currentColor` resolves against the button's own colour rather than an inherited
