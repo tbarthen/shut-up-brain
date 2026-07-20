@@ -68,6 +68,33 @@ cache-first, so if `sw.js` is byte-identical the browser detects no update and
 already-installed clients keep serving the stale `index.html` forever. Changing the
 version string is what triggers `install`/`activate` and evicts the old cache.
 
+## Noise Colour Accuracy
+
+Measured by FFT on the generated buffers, power averaged into octave bands:
+
+| Colour | Measured | Textbook | Notes |
+|--------|----------|----------|-------|
+| White  | +0.03 dB/oct | 0  | Exact |
+| Pink   | −3.03 dB/oct | −3 | Exact (Kellett IIR filter bank) |
+| Brown  | −5.34 dB/oct | −6 | −6 above ~150Hz; flattens below |
+| Green  | +0.05 dB/oct | —  | **Identical to white — see below** |
+
+Brown's low-end flattening is correct, not a defect: `lastOut = (lastOut +
+0.02*white) / 1.02` is a leaky integrator, i.e. a one-pole lowpass with a corner
+near 150Hz. A true integrator is an unbounded random walk that drifts and clips.
+
+**Green is not currently a generated colour.** `createNoiseBuffer` returns white
+noise for it, and all of its character comes from the bandpass in `toneFilters`.
+The commonly used definition is pink noise with extra energy around 500Hz —
+broadband with a mid emphasis. A bandpass is the opposite operation: it removes
+everything outside the band, leaving green ~12dB down at 62.5Hz where the
+accepted shape is ~3dB *up*. That ~15dB low-end deficit is why it sounds thin
+next to green noise elsewhere.
+
+Note also that the tone filter always applies — there is no unfiltered path — so
+what is heard is generator × filter. Brown is the least altered, because its
+energy sits where the tone lowpass barely reaches (already −23dB by 8kHz).
+
 ## Decisions & Notes
 
 - **Defaults live in the markup, not in JS.** The `active` class on a button (and

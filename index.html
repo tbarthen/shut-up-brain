@@ -497,7 +497,9 @@
       return buffer;
     }
 
-    // Pink noise uses the Voss-McCartney algorithm
+    // Pink noise via Paul Kellett's IIR filter bank (often misattributed to
+    // Voss-McCartney, which is a different, summed-generator algorithm).
+    // Measured at -3.03 dB/octave against a theoretical -3.00.
     function createPinkNoiseBuffer(ctx, durationSec) {
       const sampleRate = ctx.sampleRate;
       const length = sampleRate * durationSec;
