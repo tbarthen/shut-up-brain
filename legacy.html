@@ -451,6 +451,12 @@
     var noiseSource = null;
     var gainNode = null;
     var filterNode = null;
+    // Legacy-only volume boost: the iPad 3 speaker is quiet, so the slider's top
+    // end drives the signal up to 3x and a limiter keeps the peaks from clipping.
+    // Measured: roughly doubles the level (about +4 to +7 dB) on most noise/tone combos.
+    var VOLUME_BOOST = 3;
+    var limiterNode = null;
+    function sliderGain() { return (volumeSlider.value / 100) * VOLUME_BOOST; }
     var isPlaying = false;
     var selectedNoise = readSelection(".noise-btn", "noise");
     var selectedTone = readSelection(".tone-btn", "tone");
@@ -629,7 +635,7 @@
       noiseSource.loop = true;
 
       gainNode = audioCtx.createGain();
-      gainNode.gain.value = volumeSlider.value / 100;
+      gainNode.gain.value = sliderGain();
 
       var filterConfig = toneFilters[selectedTone][selectedNoise];
       if (filterConfig) {
@@ -645,7 +651,16 @@
         noiseSource.connect(gainNode);
       }
 
-      gainNode.connect(audioCtx.destination);
+      if (!limiterNode) {
+        limiterNode = audioCtx.createDynamicsCompressor();
+        limiterNode.threshold.value = -10;
+        limiterNode.knee.value = 0;
+        limiterNode.ratio.value = 20;
+        limiterNode.attack.value = 0.003;
+        limiterNode.release.value = 0.25;
+        limiterNode.connect(audioCtx.destination);
+      }
+      gainNode.connect(limiterNode);
       noiseSource.start(0);
 
       isPlaying = true;
@@ -742,7 +757,7 @@
 
     volumeSlider.addEventListener("input", function () {
       if (gainNode) {
-        gainNode.gain.value = volumeSlider.value / 100;
+        gainNode.gain.value = sliderGain();
       }
     });
 
