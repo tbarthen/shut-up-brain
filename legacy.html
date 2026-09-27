@@ -297,6 +297,31 @@
       .noise-btn { width: 47%; margin-bottom: 14px; }
       .timer-btn, .tone-btn { margin: 4px; }
     }
+
+    /* ---- Screen dimmer (legacy only) ----
+       A black overlay over the whole page, driven by a slider strip on the right.
+       The overlay ignores touches, so the controls underneath still work. */
+    #dimOverlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: #000; opacity: 0; pointer-events: none; z-index: 1000;
+    }
+    #dimmer {
+      position: fixed; top: 12%; bottom: 12%; right: 0; width: 48px;
+      z-index: 1001; cursor: pointer; touch-action: none;
+    }
+    .dim-track {
+      position: absolute; top: 0; bottom: 0; left: 22px; width: 4px;
+      border-radius: 2px; background: rgba(200, 210, 255, 0.4);
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .dim-dot {
+      position: absolute; left: 24px; top: 0;
+      width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+      border-radius: 50%; background: #dfe4ff;
+      transition: width 0.15s ease, height 0.15s ease, margin 0.15s ease;
+    }
+    #dimmer.active .dim-track { opacity: 1; }
+    #dimmer.active .dim-dot { width: 22px; height: 22px; margin: -11px 0 0 -11px; }
   </style>
 </head>
 <body>
@@ -371,6 +396,9 @@
   </div>
 
   <div class="status" id="status"></div>
+
+  <div id="dimOverlay"></div>
+  <div id="dimmer"><div class="dim-track"></div><div class="dim-dot"></div></div>
 
   <script>
     // ---- Old-browser support (iOS 9 Safari) ----
@@ -879,6 +907,65 @@
         }
       }
     });
+
+
+    // ---- Screen Dimmer ----
+    // Drag the right-hand strip down to darken, up to brighten. Movement is
+    // relative to where the finger lands: a stray tap in the dark only reveals
+    // the track, it never jumps the screen to full brightness.
+    // Not saved between visits, so the app never opens to a black screen.
+    (function () {
+      var MAX_DIM = 0.97; // leaves the faintest outline of the controls
+      var HIDE_DELAY_MS = 1200;
+      var dimmerEl = document.getElementById("dimmer");
+      var dotEl = dimmerEl.querySelector(".dim-dot");
+      var overlayEl = document.getElementById("dimOverlay");
+      var level = 0;
+      var startY = 0, startLevel = 0, dragging = false, hideTimer = null;
+
+      function render() {
+        overlayEl.style.opacity = level * MAX_DIM;
+        dotEl.style.top = (level * 100) + "%";
+      }
+
+      function begin(y) {
+        dragging = true;
+        startY = y;
+        startLevel = level;
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        dimmerEl.classList.add("active");
+      }
+
+      function move(y) {
+        if (!dragging) return;
+        var h = dimmerEl.offsetHeight || 1;
+        level = Math.min(1, Math.max(0, startLevel + (y - startY) / h));
+        render();
+      }
+
+      function end() {
+        if (!dragging) return;
+        dragging = false;
+        hideTimer = setTimeout(function () { dimmerEl.classList.remove("active"); }, HIDE_DELAY_MS);
+      }
+
+      dimmerEl.addEventListener("touchstart", function (e) {
+        e.preventDefault(); // no scroll, no emulated mouse events
+        begin(e.touches[0].clientY);
+      });
+      dimmerEl.addEventListener("touchmove", function (e) {
+        e.preventDefault();
+        move(e.touches[0].clientY);
+      });
+      dimmerEl.addEventListener("touchend", end);
+      dimmerEl.addEventListener("touchcancel", end);
+
+      dimmerEl.addEventListener("mousedown", function (e) { e.preventDefault(); begin(e.clientY); });
+      document.addEventListener("mousemove", function (e) { move(e.clientY); });
+      document.addEventListener("mouseup", end);
+
+      render();
+    })();
 
     // No service worker here: iOS 9 has none, and keeping legacy.html out of
     // sw.js's cache means the main app's offline behaviour is untouched.
