@@ -178,3 +178,11 @@ energy sits where the tone lowpass barely reaches (already −23dB by 8kHz).
   `currentColor` resolves against the button's own colour rather than an inherited
   one, and gets a UA default if that rule is ever moved or removed — which renders
   the icons black on a near-black background. Silent and invisible when it fails.
+
+- **Play at volume 0 shows a hint instead of starting.** The slider is the app's
+  own gain, separate from the phone's media volume, and it is saved per device.
+  At 0 the noise plays at zero gain, so Play looked broken while the phone's
+  volume was fine (seen on a Pixel 3a, 2026-10). The hint sits absolutely in the
+  section's bottom margin so it never moves the Play button, and clears as soon
+  as the slider leaves 0. Dragging to 0 *during* playback is left alone: Stop is
+  showing, so the state is visible.

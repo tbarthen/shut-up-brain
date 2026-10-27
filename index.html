@@ -109,6 +109,7 @@
     }
 
     .volume-section {
+      position: relative;
       margin-bottom: 30px;
     }
 
@@ -118,6 +119,18 @@
       text-transform: uppercase;
       letter-spacing: 0.08em;
       margin-bottom: 10px;
+    }
+
+    /* Absolutely positioned inside the section's bottom margin so showing it
+       never pushes the Play button down. */
+    .volume-hint {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: #e0a060;
     }
 
     .volume-slider {
@@ -343,6 +356,7 @@
     <div class="volume-section">
       <div class="volume-label">Volume</div>
       <input type="range" class="volume-slider" min="0" max="100" value="60">
+      <div class="volume-hint" id="volumeHint" role="status" aria-live="polite"></div>
     </div>
 
     <button class="play-btn" id="playBtn">Play</button>
@@ -445,6 +459,7 @@
 
     const playBtn = document.getElementById("playBtn");
     const volumeSlider = document.querySelector(".volume-slider");
+    const volumeHint = document.getElementById("volumeHint");
     const timerDisplay = document.getElementById("timerDisplay");
     const statusEl = document.getElementById("status");
     const noiseButtons = document.querySelectorAll(".noise-btn");
@@ -664,11 +679,26 @@
 
     // ---- UI Handlers ----
 
+    function isVolumeZero() {
+      return Number(volumeSlider.value) === 0;
+    }
+
+    function showVolumeZeroHint() {
+      volumeHint.textContent = "Volume is at 0 \u2014 raise it to hear the noise";
+    }
+
+    function clearVolumeHint() {
+      volumeHint.textContent = "";
+    }
+
     playBtn.addEventListener("click", function () {
       if (isPlaying) {
         stopNoise();
         resetTimer();
+      } else if (isVolumeZero()) {
+        showVolumeZeroHint();
       } else {
+        clearVolumeHint();
         startNoise();
         if (timerMinutes > 0) {
           startTimer(timerMinutes);
@@ -733,6 +763,12 @@
     // Saved on "change" rather than "input": input fires continuously while
     // dragging, which would write to storage on every pixel of travel.
     volumeSlider.addEventListener("change", saveSettings);
+
+    volumeSlider.addEventListener("input", function () {
+      if (!isVolumeZero()) {
+        clearVolumeHint();
+      }
+    });
 
     // ---- Sleep Timer ----
 
