@@ -121,6 +121,38 @@
       margin-bottom: 10px;
     }
 
+    /* Out of the flow, beside the Volume label, and only made visible while it
+       can be used, so it never shifts the layout. */
+    .boost-btn {
+      position: absolute;
+      top: -6px;
+      right: 0;
+      border: 1px solid #333355;
+      border-radius: 10px;
+      padding: 4px 12px;
+      background: #16213e;
+      color: #8888aa;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      visibility: hidden;
+      outline: none;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .boost-btn.available {
+      visibility: visible;
+    }
+
+    .boost-btn.on {
+      border-color: #e0a060;
+      background: #3a2a1a;
+      color: #f0c080;
+      box-shadow: 0 0 10px rgba(224, 160, 96, 0.35);
+    }
+
     /* Absolutely positioned inside the section's bottom margin so showing it
        never pushes the Play button down. */
     .volume-hint {
@@ -355,6 +387,7 @@
 
     <div class="volume-section">
       <div class="volume-label">Volume</div>
+      <button class="boost-btn" id="boostBtn" aria-pressed="false" disabled>Boost</button>
       <input type="range" class="volume-slider" min="0" max="100" value="60">
       <div class="volume-hint" id="volumeHint" role="status" aria-live="polite"></div>
     </div>
@@ -460,6 +493,13 @@
     const playBtn = document.getElementById("playBtn");
     const volumeSlider = document.querySelector(".volume-slider");
     const volumeHint = document.getElementById("volumeHint");
+    const boostBtn = document.getElementById("boostBtn");
+
+    const BOOST_GAIN = 2.5;
+    const BOOST_FADE_TIME_CONSTANT = 0.5;
+    let boostOn = false;
+    let boostNode = null;
+    let limiterNode = null;
     const timerDisplay = document.getElementById("timerDisplay");
     const statusEl = document.getElementById("status");
     const noiseButtons = document.querySelectorAll(".noise-btn");
@@ -644,12 +684,19 @@
         noiseSource.connect(gainNode);
       }
 
-      gainNode.connect(audioCtx.destination);
+      boostNode = audioCtx.createGain();
+      boostNode.gain.value = boostOn ? BOOST_GAIN : 1;
+      limiterNode = createLimiter(audioCtx);
+
+      gainNode.connect(boostNode);
+      boostNode.connect(limiterNode);
+      limiterNode.connect(audioCtx.destination);
       noiseSource.start(0);
 
       isPlaying = true;
       playBtn.textContent = "Stop";
       playBtn.classList.add("playing");
+      updateBoostButton();
 
       requestWakeLock();
     }
@@ -668,16 +715,77 @@
         gainNode.disconnect();
         gainNode = null;
       }
+      if (boostNode) {
+        boostNode.disconnect();
+        boostNode = null;
+      }
+      if (limiterNode) {
+        limiterNode.disconnect();
+        limiterNode = null;
+      }
 
       isPlaying = false;
       playBtn.textContent = "Play";
       playBtn.classList.remove("playing");
+      updateBoostButton();
 
       releaseWakeLock();
       clearTimer();
     }
 
     // ---- UI Handlers ----
+
+    // Boost pushes past full scale, so a limiter catches the peaks instead of
+    // letting them clip into crackle.
+    function createLimiter(ctx) {
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -3;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.25;
+      return limiter;
+    }
+
+    function isVolumeMax() {
+      return Number(volumeSlider.value) === Number(volumeSlider.max);
+    }
+
+    function isBoostAvailable() {
+      return isPlaying && isVolumeMax();
+    }
+
+    function rampBoostGain(target) {
+      if (!boostNode) return;
+      boostNode.gain.setTargetAtTime(target, audioCtx.currentTime, BOOST_FADE_TIME_CONSTANT);
+    }
+
+    function updateBoostButton() {
+      const available = isBoostAvailable();
+      boostBtn.classList.toggle("available", available);
+      boostBtn.classList.toggle("on", boostOn);
+      boostBtn.setAttribute("aria-pressed", boostOn ? "true" : "false");
+      boostBtn.disabled = !available;
+    }
+
+    function enableBoost() {
+      if (!isBoostAvailable()) return;
+      boostOn = true;
+      rampBoostGain(BOOST_GAIN);
+      updateBoostButton();
+    }
+
+    function disableBoost() {
+      if (!boostOn) return;
+      boostOn = false;
+      rampBoostGain(1);
+      updateBoostButton();
+    }
+
+    // The tone buttons are laid out brightest to deepest, so position is depth.
+    function toneDepth(btn) {
+      return Array.prototype.indexOf.call(toneButtons, btn);
+    }
 
     function isVolumeZero() {
       return Number(volumeSlider.value) === 0;
@@ -695,6 +803,7 @@
       if (isPlaying) {
         stopNoise();
         resetTimer();
+        disableBoost();
       } else if (isVolumeZero()) {
         showVolumeZeroHint();
       } else {
@@ -708,6 +817,7 @@
 
     noiseButtons.forEach(function (btn) {
       btn.addEventListener("click", function () {
+        disableBoost();
         noiseButtons.forEach(function (b) { b.classList.remove("active"); });
         btn.classList.add("active");
         selectedNoise = btn.dataset.noise;
@@ -736,6 +846,10 @@
 
     toneButtons.forEach(function (btn) {
       btn.addEventListener("click", function () {
+        const previous = document.querySelector(".tone-btn.active");
+        if (!previous || toneDepth(btn) < toneDepth(previous)) {
+          disableBoost();
+        }
         toneButtons.forEach(function (b) { b.classList.remove("active"); });
         btn.classList.add("active");
         selectedTone = btn.dataset.tone;
@@ -767,6 +881,21 @@
     volumeSlider.addEventListener("input", function () {
       if (!isVolumeZero()) {
         clearVolumeHint();
+      }
+    });
+
+    volumeSlider.addEventListener("input", function () {
+      if (!isVolumeMax()) {
+        disableBoost();
+      }
+      updateBoostButton();
+    });
+
+    boostBtn.addEventListener("click", function () {
+      if (boostOn) {
+        disableBoost();
+      } else {
+        enableBoost();
       }
     });
 
@@ -831,7 +960,10 @@
         // Fade out over 5 seconds
         if (isPlaying && gainNode) {
           gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 1.5);
-          setTimeout(function () { stopNoise(); }, 5000);
+          setTimeout(function () {
+            stopNoise();
+            disableBoost();
+          }, 5000);
         }
         return;
       }

@@ -186,3 +186,19 @@ energy sits where the tone lowpass barely reaches (already −23dB by 8kHz).
   section's bottom margin so it never moves the Play button, and clears as soon
   as the slider leaves 0. Dragging to 0 *during* playback is left alone: Stop is
   showing, so the state is visible.
+
+- **Boost is deliberately hard to reach and easy to lose.** It exists for small
+  phone speakers that cannot reproduce Deep/Abyss (a Pixel 3a plays almost
+  nothing below ~300Hz, so Deep comes out ~9dB quieter than on a Pixel 8). It
+  adds a `boostNode` (×2.5) and a limiter after `gainNode`, fading in over ~1.5s.
+  Rules, all chosen so the app can never start out loud:
+  - The button only shows while playing **and** the slider is at max.
+  - It turns off on Stop, sleep-timer expiry, moving the slider below max, any
+    noise change, and any tone change *except* to a deeper tone. Going from
+    boosted Deep to a brighter tone would be a jarring jump. Tone depth is the
+    tone buttons' order in the markup (brightest to deepest), so keep that order.
+  - It is never saved.
+  Measured on brown + Deep: about +5dB RMS, peaks held at 1.0. Higher multipliers
+  were tried (3.5, 4) and gain under 0.5dB more: the limiter is the ceiling, so
+  they only squash harder. The limiter (threshold −3dB, ratio 20) stays in the
+  chain unboosted too; it only touches rare peaks there.
